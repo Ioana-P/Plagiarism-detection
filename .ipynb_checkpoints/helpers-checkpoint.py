@@ -1,6 +1,11 @@
 import re
 import pandas as pd
 import operator 
+from sklearn.feature_extraction.text import CountVectorizer
+import re
+from nltk import RegexpTokenizer
+import numpy as np
+
 
 # Add 'datatype' column that indicates if the record is original wiki answer as 0, training data 1, test data 2, onto 
 # the dataframe - uses stratified random sampling (with seed) to sample by task & plagiarism amount 
@@ -110,3 +115,84 @@ def create_text_column(df, file_directory='data/'):
     text_df['Text'] = text
     
     return text_df
+
+
+def numerical_dataframe(csv_file='data/file_information.csv'):
+    '''Reads in a csv file which is assumed to have `File`, `Category` and `Task` columns.
+       This function does two things: 
+       1) converts `Category` column values to numerical values 
+       2) Adds a new, numerical `Class` label column.
+       The `Class` column will label plagiarized answers as 1 and non-plagiarized as 0.
+       Source texts have a special label, -1.
+       :param csv_file: The directory for the file_information.csv file
+       :return: A dataframe with numerical categories and a new `Class` label column'''
+    data = pd.read_csv(csv_file)
+    data.loc[data.Category=='non']
+    data.Category.replace({'non':0,
+                           'heavy':1,
+                          'light':2,
+                          'cut':3,
+                          'orig':-1}, inplace=True)
+    data['Class'] = data['Category'].values
+    data.Class.replace({2:1,
+                          3:1}, inplace=True)
+    
+    # your code here
+    
+    return data
+
+def reduce_to_one(x):
+    if x>1:
+        return 1
+    else:
+        return x
+
+
+def calculate_containment(df, n, answer_filename):
+    '''Calculates the containment between a given answer text and its associated source text.
+       This function creates a count of ngrams (of a size, n) for each text file in our data.
+       Then calculates the containment by finding the ngram count for a given answer text, 
+       and its associated source text, and calculating the normalized intersection of those counts.
+       :param df: A dataframe with columns,
+           'File', 'Task', 'Category', 'Class', 'Text', and 'Datatype'
+       :param n: An integer that defines the ngram size
+       :param answer_filename: A filename for an answer text in the df, ex. 'g0pB_taskd.txt'
+       :return: A single containment value that represents the similarity
+           between an answer text and its source text.
+    '''
+    
+    # your code here
+    
+    try:
+        student_ans = process_file(open(answer_filename, 'r'))
+    except FileNotFoundError:
+        answer_filename = 'data/' + answer_filename
+        student_ans = process_file(open(answer_filename, 'r'))
+   
+
+    task = answer_filename[-5]
+    wiki_text_ans_loc = df.loc[((df['Task']==task) & (df['Category'] ==-1))]['File']
+    wiki_text_ans_filename = wiki_text_ans_loc.iloc[0]
+    
+    try:
+        wiki_ans = process_file(open(wiki_text_ans_filename, 'r'))
+    except FileNotFoundError:
+        wiki_text_ans_filename = 'data/' + wiki_text_ans_filename
+        wiki_ans = process_file(open(wiki_text_ans_filename, 'r'))
+   
+    
+    cvectorizer = CountVectorizer(ngram_range=(n,n))
+    
+    doc = cvectorizer.fit_transform([wiki_ans, student_ans])
+    doc_df = pd.DataFrame(doc.todense(), columns=cvectorizer.get_feature_names())
+    
+    answer_vec = doc_df.iloc[1].values
+    ngram_length_ans = np.sum(answer_vec)
+
+    input_df_vect = doc_df.iloc[0].values
+    comp_df_vect = doc_df.iloc[1].values
+    
+    containment_value = np.sum(np.minimum(input_df_vect,comp_df_vect))/np.sum(comp_df_vect)
+
+
+    return containment_value
