@@ -2,7 +2,7 @@
 
 This repository contains code and associated files for deploying a plagiarism detector using AWS SageMaker. Significant parts of this code were provided by Udacity via their Machine Learning Engineer Nanodegree. Final performance of the most recent model on test data is shown in confusion matrix below:
 
-![confusion_matrix_RF](#https://github.com/Ioana-P/Plagiarism-detection/blob/master/final_conf_matrix.jpg)
+![confusion_matrix_RF](https://github.com/Ioana-P/Plagiarism-detection/blob/master/final_conf_matrix.jpg)
 
 ## Project Overview
 
