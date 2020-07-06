@@ -37,4 +37,5 @@ data/
     - `*.txt` all text files containing the actual student submission / wikipedia answer
     - `file_information.csv` table containing metadata on all txt files 
     
-    
+References:
+Clough, P. and Stevenson, M. Developing A Corpus of Plagiarised Short Answers, Language Resources and Evaluation: Special Issue on Plagiarism and Authorship Analysis, In Press. [Download]
