@@ -5,6 +5,8 @@ from sklearn.feature_extraction.text import CountVectorizer
 import re
 from nltk import RegexpTokenizer
 import numpy as np
+from sklearn.model_selection import train_test_split
+import io
 
 
 # Add 'datatype' column that indicates if the record is original wiki answer as 0, training data 1, test data 2, onto 
@@ -74,25 +76,26 @@ def train_test_dataframe(clean_df, random_seed=100):
 # helper function for pre-processing text given a file
 def process_file(file):
     # put text in all lower case letters 
-    err_i=0
-    try: 
-        all_text = file.read().lower()
+    
+    f = open(file, mode="rt", encoding='utf-8')
+    try:
+        all_text = f.read().lower()
+
     except UnicodeDecodeError:
-        all_text=''
-        for line in file:
-            line=line.strip()
-            line=line.decode('utf-8','ignore').encode("utf-8")
-            all_text +=' ' + line
+        f = open(file, mode="rt", encoding='latin-1')
+        all_text = f.read().lower()
 
     
 
     # remove all non-alphanumeric chars
-    all_text = re.sub(r"[^a-zA-Z0-9]", " ", all_text)
+    all_text = re.sub(r"[^\x00-\x7F]+", " ", all_text)
+    all_text = re.sub(r"[^a-zA-Z0-9(){}|]", " ", all_text)
     # remove newlines/tabs, etc. so it's easier to match phrases, later
     all_text = re.sub(r"\t", " ", all_text)
     all_text = re.sub(r"\n", " ", all_text)
     all_text = re.sub("  ", " ", all_text)
     all_text = re.sub("   ", " ", all_text)
+    
     
     return all_text
 
@@ -157,6 +160,36 @@ def reduce_to_one(x):
     else:
         return x
 
+def lcs_norm_word(answer_text, source_text):
+    '''Computes the longest common subsequence of words in two texts; returns a normalized value.
+       :param answer_text: The pre-processed text for an answer text
+       :param source_text: The pre-processed text for an answer's associated source text
+       :return: A normalized LCS value'''
+    
+    tokenizer = RegexpTokenizer(r'[a-zA-Z0-9]+')
+    
+    # splitting inputs
+    tok_answer_text = tokenizer.tokenize(answer_text)
+    tok_source_text = tokenizer.tokenize(source_text)
+    
+    len_answers = len(tok_answer_text)
+    len_source = len(tok_source_text)
+    
+    tok_answer_text.insert(0, ' ')
+    tok_source_text.insert(0, ' ')
+
+    # making a matrix of zeros with as many columns as the answer and 
+    # as many rows as the student answer, plus 1 each
+    lcs_matrix = np.zeros((len_source+1, len_answers+1)) 
+        
+    for i in range(1,len_source+1):
+        for j in range(1,len_answers+1):
+            if tok_answer_text[j]==tok_source_text[i]:
+                lcs_matrix[i][j] = lcs_matrix[i-1][j-1] + 1
+            else:
+                lcs_matrix[i][j] = max(lcs_matrix[i-1][j], lcs_matrix[i][j-1])
+    cs = lcs_matrix[-1][-1]
+    return cs/len_answers
 
 def calculate_containment(df, n, answer_filename):
     '''Calculates the containment between a given answer text and its associated source text.
@@ -170,14 +203,18 @@ def calculate_containment(df, n, answer_filename):
        :return: A single containment value that represents the similarity
            between an answer text and its source text.
     '''
-    
-    # your code here
-    
+     
+#     try:
+#         student_ans = process_file(open(answer_filename, 'r'))
+#     except FileNotFoundError:
+#         answer_filename = 'data/' + answer_filename
+#         student_ans = process_file(open(answer_filename, 'r'))
+        
     try:
-        student_ans = process_file(open(answer_filename, 'r'))
+        student_ans = process_file('data/' + answer_filename)
     except FileNotFoundError:
         answer_filename = 'data/' + answer_filename
-        student_ans = process_file(open(answer_filename, 'r'))
+        student_ans = process_file(answer_filename)
    
 
     task = answer_filename[-5]
@@ -185,10 +222,10 @@ def calculate_containment(df, n, answer_filename):
     wiki_text_ans_filename = wiki_text_ans_loc.iloc[0]
     
     try:
-        wiki_ans = process_file(open(wiki_text_ans_filename, 'r'))
+        wiki_ans = process_file('data/'+ wiki_text_ans_filename)
     except FileNotFoundError:
         wiki_text_ans_filename = 'data/' + wiki_text_ans_filename
-        wiki_ans = process_file(open(wiki_text_ans_filename, 'r'))
+        wiki_ans = process_file(wiki_text_ans_filename)
    
     
     cvectorizer = CountVectorizer(ngram_range=(n,n))
@@ -206,3 +243,105 @@ def calculate_containment(df, n, answer_filename):
 
 
     return containment_value
+
+def make_csv(x, y, filename, data_dir):
+    '''Merges features and labels and converts them into one csv file with labels in the first column.
+       :param x: Data features
+       :param y: Data labels
+       :param file_name: Name of csv file, ex. 'train.csv'
+       :param data_dir: The directory where files will be saved
+       '''
+    # make data dir, if it does not exist
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+    
+    # your code here\
+    X = np.array(x)
+    Y = np.array(y)
+
+    
+    try: 
+        data = np.concatenate([Y,X], axis=1)
+    except ValueError:
+        Y = Y.reshape((1,-1))
+        data = np.concatenate([Y.T,X], axis=1)
+        
+    np.savetxt(data_dir+'/'+filename, data, delimiter=",")
+    
+    # nothing is returned, but a print statement indicates that the function has run
+    print('Path created: '+str(data_dir)+'/'+str(filename))
+    
+    return
+
+def train_test_data(complete_df, features_df, selected_features):
+    '''Gets selected training and test features from given dataframes, and 
+       returns tuples for training and test features and their corresponding class labels.
+       :param complete_df: A dataframe with all of our processed text data, datatypes, and labels
+       :param features_df: A dataframe of all computed, similarity features
+       :param selected_features: An array of selected features that correspond to certain columns in `features_df`
+       :return: training and test features and labels: (train_x, train_y), (test_x, test_y)'''
+    
+    df = complete_df.join(features_df)
+    
+    train_df = df.loc[df.Datatype == 'train']
+    test_df = df.loc[df.Datatype == 'test']
+    
+    # get the training features
+    train_x = train_df[train_df.columns.intersection(selected_features)]
+    # And training class labels (0 or 1)
+    train_y = train_df.Class
+    
+    # get the test features and labels
+    test_x = test_df[test_df.columns.intersection(selected_features)]
+    test_y = test_df.Class
+    
+    return (train_x.values, train_y.values), (test_x.values, test_y.values)
+
+
+def create_lcs_features(df, column_name='lcs_word'):
+    
+    lcs_values = []
+    
+    # iterate through files in dataframe
+    for i in df.index:
+        # Computes LCS_norm words feature using function above for answer tasks
+        if df.loc[i,'Category'] > -1:
+            # get texts to compare
+            answer_text = df.loc[i, 'Text'] 
+            task = df.loc[i, 'Task']
+            # we know that source texts have Class = -1
+            orig_rows = df[(df['Class'] == -1)]
+            orig_row = orig_rows[(orig_rows['Task'] == task)]
+            source_text = orig_row['Text'].values[0]
+
+            # calculate lcs
+            lcs = lcs_norm_word(answer_text, source_text)
+            lcs_values.append(lcs)
+        # Sets to -1 for original tasks 
+        else:
+            lcs_values.append(-1)
+
+    print('LCS features created!')
+    return lcs_values
+
+def create_containment_features(df, n, column_name=None):
+    
+    containment_values = []
+    
+    if(column_name==None):
+        column_name = 'c_'+str(n) # c_1, c_2, .. c_n
+    
+    # iterates through dataframe rows
+    for i in df.index:
+        file = df.loc[i, 'File']
+        # Computes features using calculate_containment function
+        if df.loc[i,'Category'] > -1:
+            c = helpers.calculate_containment(df, n, file)
+            containment_values.append(c)
+        # Sets value to -1 for original tasks 
+        else:
+            containment_values.append(-1)
+    
+    print(str(n)+'-gram containment features created!')
+    return containment_values
+
