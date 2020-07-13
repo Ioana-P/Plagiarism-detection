@@ -1,8 +1,19 @@
 # Plagiarism Project, Machine Learning Deployment
 
-This repository contains code and associated files for deploying a plagiarism detector using AWS SageMaker. Significant parts of this code were provided by Udacity via their Machine Learning Engineer Nanodegree. Final performance of the most recent Sagemaker model (which was a Sagemaker SKLearn RandomForest) on test data is shown in confusion matrix below:
+This repository contains code and associated files for deploying a plagiarism detector using AWS SageMaker. Significant parts of this code were provided by Udacity via their Machine Learning Engineer Nanodegree. Final performance of the most recent Sagemaker model (which was a Sagemaker SKLearn RandomForest) on test data is shown in confusion matrix below. Our final model had an accuracy of 96% and a ROC AUC of 0.95. 
 
 ![confusion_matrix_RF](https://github.com/Ioana-P/Plagiarism-detection/blob/master/final_conf_matrix_2.png)
+
+For the multilabel classification task the goal was to be able to predict whether an answer was:
+- **cut** and paste
+- **light**ly modified from cut and paste
+- **heav**ily modified from cut and paste
+- **non**-plagiarised
+
+The results are visible in the matrix below. Our final accuracy on test data was 71% using a Random Forest model as well. 
+
+![confusion_matrix_RF_multilabel](https://github.com/Ioana-P/Plagiarism-detection/blob/master/multilabel_conf_matrix.png)
+
 
 ## Project Overview
 
