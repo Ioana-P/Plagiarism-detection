@@ -1,6 +1,6 @@
 # Plagiarism Project, Machine Learning Deployment
 
-This repository contains code and associated files for deploying a plagiarism detector using AWS SageMaker. Significant parts of this code were provided by Udacity via their Machine Learning Engineer Nanodegree. Final performance of the most recent model on test data is shown in confusion matrix below:
+This repository contains code and associated files for deploying a plagiarism detector using AWS SageMaker. Significant parts of this code were provided by Udacity via their Machine Learning Engineer Nanodegree. Final performance of the most recent Sagemaker model (which was a Sagemaker SKLearn RandomForest) on test data is shown in confusion matrix below:
 
 ![confusion_matrix_RF](https://github.com/Ioana-P/Plagiarism-detection/blob/master/final_conf_matrix_2.png)
 
@@ -22,12 +22,18 @@ File navigation:
 * Selected "good" features, by analyzing the correlations between different features.
 * Created train/test split `.csv` files that hold the relevant features and class labels for train/test data points.
 
-**3_Training_a_Model: Train and Deploy Your Model in SageMaker**
+**3a_AWS_Training_a_Model: Train and Deploy Your Model in SageMaker**
 
-* Upload your train/test feature data to S3.
-* Define a binary classification model and a training script.
-* Train your model and deploy it using SageMaker.
-* Evaluate your deployed classifier.
+* Uploading train/test feature data to S3.
+* Defined a binary classification model and a training script.
+* Trained our model and deployed it using SageMaker.
+* Evaluated our deployed classifier.
+
+**3b_Training_local_Model: Train and Deploy Your Model in SageMaker**
+
+* Trained and optimised several sklearn models on binary classification
+* Trained and optimised several sklearn models on multiclass classification
+* Visualised best model performances on test data
 
 Other Files:
 helpers.py - additional cleaning, preprocessing and feature engineering functions utilized in the notebooks
