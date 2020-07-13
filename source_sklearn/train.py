@@ -42,8 +42,8 @@ if __name__ == '__main__':
     parser.add_argument('--data-dir', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
     
     ## TODO: Add any additional arguments that you will need to pass into your model
-    parser.add_argument('--n-estimators', type=int, default=50)
-    parser.add_argument('--min-samples-split', type=int, default=0.1)
+    parser.add_argument('--n_estimators', type=int, default=50)
+    parser.add_argument('--min_samples_split', type=int, default=0.1)
 
     
     # args holds all passed-in arguments

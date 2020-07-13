@@ -7,7 +7,7 @@ from nltk import RegexpTokenizer
 import numpy as np
 from sklearn.model_selection import train_test_split
 import io
-
+import os
 
 # Add 'datatype' column that indicates if the record is original wiki answer as 0, training data 1, test data 2, onto 
 # the dataframe - uses stratified random sampling (with seed) to sample by task & plagiarism amount 
@@ -76,8 +76,10 @@ def train_test_dataframe(clean_df, random_seed=100):
 # helper function for pre-processing text given a file
 def process_file(file):
     # put text in all lower case letters 
-    
-    f = open(file, mode="rt", encoding='utf-8')
+    try:
+        f = open(file, mode="rt", encoding='utf-8')
+    except TypeError:
+        f = file
     try:
         all_text = f.read().lower()
 
@@ -273,7 +275,7 @@ def make_csv(x, y, filename, data_dir):
     
     return
 
-def train_test_data(complete_df, features_df, selected_features):
+def train_test_data(complete_df, features_df, selected_features, target_feature = 'Class'):
     '''Gets selected training and test features from given dataframes, and 
        returns tuples for training and test features and their corresponding class labels.
        :param complete_df: A dataframe with all of our processed text data, datatypes, and labels
@@ -289,13 +291,41 @@ def train_test_data(complete_df, features_df, selected_features):
     # get the training features
     train_x = train_df[train_df.columns.intersection(selected_features)]
     # And training class labels (0 or 1)
-    train_y = train_df.Class
+    train_y = train_df[target_feature]
     
     # get the test features and labels
     test_x = test_df[test_df.columns.intersection(selected_features)]
-    test_y = test_df.Class
+    test_y = test_df[target_feature]
     
     return (train_x.values, train_y.values), (test_x.values, test_y.values)
+
+
+def create_containment_features(df, n, column_name=None):
+    """ Function returns a list of containment features, calculated for a given n 
+        Should return a list of length 100 for all files in a complete_df
+        Params:
+        df - input dataframe 
+        n - number of containment features, i.e. to what value of ngram size to build features
+        Returns:
+        containment_values - (list) values for ngram containment features"""
+    containment_values = []
+    
+    if(column_name==None):
+        column_name = 'c_'+str(n) # c_1, c_2, .. c_n
+    
+    # iterates through dataframe rows
+    for i in df.index:
+        file = df.loc[i, 'File']
+        # Computes features using calculate_containment function
+        if df.loc[i,'Category'] > -1:
+            c = helpers.calculate_containment(df, n, file)
+            containment_values.append(c)
+        # Sets value to -1 for original tasks 
+        else:
+            containment_values.append(-1)
+    
+    print(str(n)+'-gram containment features created!')
+    return containment_values
 
 
 def create_lcs_features(df, column_name='lcs_word'):
@@ -336,7 +366,7 @@ def create_containment_features(df, n, column_name=None):
         file = df.loc[i, 'File']
         # Computes features using calculate_containment function
         if df.loc[i,'Category'] > -1:
-            c = helpers.calculate_containment(df, n, file)
+            c = calculate_containment(df, n, file)
             containment_values.append(c)
         # Sets value to -1 for original tasks 
         else:
@@ -344,4 +374,6 @@ def create_containment_features(df, n, column_name=None):
     
     print(str(n)+'-gram containment features created!')
     return containment_values
+
+
 
